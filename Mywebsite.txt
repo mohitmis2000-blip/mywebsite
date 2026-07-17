@@ -1,0 +1,114 @@
+/**
+ * Mohit Enterprises — Enquiry form mailer (Google Apps Script)
+ * --------------------------------------------------------------
+ * Receives a POST from the website enquiry form and emails the details to the
+ * inbox below, sent from YOUR Google account (no third-party service).
+ *
+ * Deploy:  Deploy ▸ New deployment ▸ Web app
+ *          Execute as: Me   |   Who has access: Anyone
+ * Then copy the Web app URL (it ends in /exec) into the SCRIPT_URL line
+ * in the website's enquiry code.
+ */
+
+var TO_EMAIL = 'mohitentma@gmail.com';   // where enquiries are delivered
+
+function doPost(e) {
+  try {
+    // The website sends the data as a JSON string (text/plain) to avoid a
+    // CORS preflight, so read it from postData.contents.
+    var d = {};
+    if (e && e.postData && e.postData.contents) {
+      d = JSON.parse(e.postData.contents);
+    } else if (e && e.parameter) {
+      d = e.parameter; // fallback if sent as form fields
+    }
+
+    var esc = function (v) {
+      return (v == null ? '' : String(v))
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+
+    var company     = esc(d.company);
+    var person      = esc(d.person);
+    var phone       = esc(d.phone);
+    var email       = esc(d.email);
+    var industry    = esc(d.industry);
+    var requirement = esc(d.requirement);
+
+    var subject = 'Manpower Enquiry — ' + (company || 'Website');
+
+    var rows = [
+      ['Company', company],
+      ['Contact Person', person],
+      ['Phone', phone],
+      ['Email', email],
+      ['Industry', industry],
+      ['Requirement', requirement]
+    ];
+
+    var trs = rows.map(function (r) {
+      return '<tr>' +
+        '<td style="padding:9px 14px;border:1px solid #ececec;background:#fff7ef;' +
+        'font-weight:600;color:#9a4b00;white-space:nowrap;vertical-align:top;">' + r[0] + '</td>' +
+        '<td style="padding:9px 14px;border:1px solid #ececec;color:#222;">' + (r[1] || '—') + '</td>' +
+        '</tr>';
+    }).join('');
+
+    var html =
+      '<div style="font-family:Arial,Helvetica,sans-serif;max-width:580px;margin:0 auto;">' +
+        '<div style="background:#FF6B00;color:#ffffff;padding:18px 22px;border-radius:8px 8px 0 0;">' +
+          '<h2 style="margin:0;font-size:19px;">New Manpower Enquiry</h2>' +
+          '<p style="margin:5px 0 0;font-size:13px;opacity:.92;">Mohit Enterprises — website enquiry form</p>' +
+        '</div>' +
+        '<table style="border-collapse:collapse;width:100%;font-size:14px;border:1px solid #ececec;border-top:none;">' +
+          trs +
+        '</table>' +
+        '<p style="font-size:12px;color:#888;margin:14px 4px 0;">Tip: just hit “Reply” to respond directly to ' +
+          (email || 'the sender') + '.</p>' +
+      '</div>';
+
+    var plain =
+      'New manpower enquiry from the Mohit Enterprises website:\n\n' +
+      'Company: ' + company + '\n' +
+      'Contact Person: ' + person + '\n' +
+      'Phone: ' + phone + '\n' +
+      'Email: ' + email + '\n' +
+      'Industry: ' + industry + '\n' +
+      'Requirement: ' + requirement + '\n';
+
+    MailApp.sendEmail({
+      to: TO_EMAIL,
+      replyTo: (d.email && String(d.email).indexOf('@') > -1) ? String(d.email) : TO_EMAIL,
+      subject: subject,
+      htmlBody: html,
+      body: plain,
+      name: 'Mohit Enterprises Website'
+    });
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ success: false, error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Visiting the Web app URL in a browser shows this — handy to confirm it's live.
+function doGet() {
+  return ContentService.createTextOutput(
+    'Mohit Enterprises enquiry endpoint is live. Submit the website form to send an enquiry.'
+  );
+}
+
+// Optional: run this once from the editor (Run ▸ testEmail) to send yourself a
+// sample and trigger the authorization prompt before going live.
+function testEmail() {
+  MailApp.sendEmail({
+    to: TO_EMAIL,
+    subject: 'Test — Mohit Enterprises enquiry mailer',
+    body: 'If you received this, the enquiry mailer is authorised and working.'
+  });
+}
